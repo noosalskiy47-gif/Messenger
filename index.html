@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grok Messenger</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+</head>
+<body>
+  <div class="app">
+    <!-- Боковая панель -->
+    <aside class="sidebar" id="sidebar">
+      <header class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">💬</span>
+          <span class="logo-text">Grok Messenger</span>
+        </div>
+        <button class="btn-icon" id="newChatBtn" title="Новый чат">+</button>
+      </header>
+
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Поиск чатов..." autocomplete="off">
+      </div>
+
+      <div class="chats-list" id="chatsList">
+        <!-- Чаты будут добавлены через JS -->
+      </div>
+    </aside>
+
+    <!-- Основная область чата -->
+    <main class="chat-area">
+      <header class="chat-header" id="chatHeader">
+        <button class="btn-icon mobile-menu" id="menuBtn">☰</button>
+        <div class="chat-info">
+          <div class="chat-avatar" id="headerAvatar">?</div>
+          <div class="chat-meta">
+            <div class="chat-name" id="headerName">Выберите чат</div>
+            <div class="chat-status" id="headerStatus">—</div>
+          </div>
+        </div>
+      </header>
+
+      <div class="messages" id="messages">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">💬</div>
+          <p>Выберите чат, чтобы начать общение</p>
+        </div>
+      </div>
+
+      <footer class="composer" id="composer" style="display: none;">
+        <button class="btn-icon" id="emojiBtn" title="Эмодзи">😊</button>
+        <input type="text" id="messageInput" placeholder="Написать сообщение..." autocomplete="off">
+        <button class="btn-send" id="sendBtn" title="Отправить">➤</button>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Модальное окно нового чата -->
+  <div class="modal" id="newChatModal">
+    <div class="modal-content">
+      <h3>Новый чат</h3>
+      <input type="text" id="newChatName" placeholder="Имя собеседника" maxlength="30">
+      <div class="modal-actions">
+        <button class="btn-secondary" id="cancelNewChat">Отмена</button>
+        <button class="btn-primary" id="createNewChat">Создать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Эмодзи-панель -->
+  <div class="emoji-panel" id="emojiPanel">
+    <div class="emoji-grid" id="emojiGrid"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
