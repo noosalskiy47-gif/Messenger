@@ -3,39 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Grok Messenger</title>
+  <title>Grok Messenger Online</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
 </head>
 <body>
-  <div class="app">
+  <!-- Экран входа -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">💬</div>
+      <h1>Grok Messenger</h1>
+      <p class="login-subtitle">Онлайн-мессенджер</p>
+      <input type="text" id="displayNameInput" placeholder="Как вас зовут?" maxlength="24" autocomplete="off">
+      <button id="loginBtn" class="btn-primary btn-full">Войти</button>
+      <p class="login-hint">Просто введите имя — регистрация не нужна</p>
+    </div>
+  </div>
+
+  <!-- Основное приложение -->
+  <div id="app" class="app" style="display: none;">
     <!-- Боковая панель -->
     <aside class="sidebar" id="sidebar">
       <header class="sidebar-header">
-        <div class="logo">
-          <span class="logo-icon">💬</span>
-          <span class="logo-text">Grok Messenger</span>
+        <div class="user-info">
+          <div class="avatar" id="myAvatar">?</div>
+          <div>
+            <div class="my-name" id="myName">—</div>
+            <div class="my-status online">онлайн</div>
+          </div>
         </div>
-        <button class="btn-icon" id="newChatBtn" title="Новый чат">+</button>
+        <button class="btn-icon" id="logoutBtn" title="Выйти">⏻</button>
       </header>
 
       <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Поиск чатов..." autocomplete="off">
+        <input type="text" id="searchInput" placeholder="Поиск пользователей..." autocomplete="off">
       </div>
 
-      <div class="chats-list" id="chatsList">
-        <!-- Чаты будут добавлены через JS -->
+      <div class="section-title">Пользователи</div>
+      <div class="chats-list" id="usersList">
+        <!-- Пользователи -->
       </div>
     </aside>
 
-    <!-- Основная область чата -->
+    <!-- Область чата -->
     <main class="chat-area">
       <header class="chat-header" id="chatHeader">
         <button class="btn-icon mobile-menu" id="menuBtn">☰</button>
         <div class="chat-info">
           <div class="chat-avatar" id="headerAvatar">?</div>
           <div class="chat-meta">
-            <div class="chat-name" id="headerName">Выберите чат</div>
+            <div class="chat-name" id="headerName">Выберите собеседника</div>
             <div class="chat-status" id="headerStatus">—</div>
           </div>
         </div>
@@ -44,7 +61,7 @@
       <div class="messages" id="messages">
         <div class="empty-state" id="emptyState">
           <div class="empty-icon">💬</div>
-          <p>Выберите чат, чтобы начать общение</p>
+          <p>Выберите пользователя слева,<br>чтобы начать переписку</p>
         </div>
       </div>
 
@@ -56,23 +73,11 @@
     </main>
   </div>
 
-  <!-- Модальное окно нового чата -->
-  <div class="modal" id="newChatModal">
-    <div class="modal-content">
-      <h3>Новый чат</h3>
-      <input type="text" id="newChatName" placeholder="Имя собеседника" maxlength="30">
-      <div class="modal-actions">
-        <button class="btn-secondary" id="cancelNewChat">Отмена</button>
-        <button class="btn-primary" id="createNewChat">Создать</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Эмодзи-панель -->
   <div class="emoji-panel" id="emojiPanel">
     <div class="emoji-grid" id="emojiGrid"></div>
   </div>
 
-  <script src="script.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>

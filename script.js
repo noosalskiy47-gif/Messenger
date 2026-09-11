@@ -1,72 +1,60 @@
-// ========== DATA ==========
-const EMOJIS = ["😀","😂","😍","🥰","😎","🤔","👍","👎","❤️","🔥","🎉","✨","👋","🙏","💯","🚀","💬","👀","😊","🥳","😢","😡","🤝","💪","🌟","⭐","🍀","🍕","☕","🎵"];
+// ========== FIREBASE ==========
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged,
+  signOut,
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  push,
+  onValue,
+  onDisconnect,
+  serverTimestamp,
+  query,
+  orderByChild,
+  limitToLast,
+  off
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
-const DEFAULT_CHATS = [
-  {
-    id: "1",
-    name: "Анна",
-    avatar: "А",
-    status: "онлайн",
-    messages: [
-      { id: 1, text: "Привет! Как дела?", from: "in", time: "10:12" },
-      { id: 2, text: "Привет! Всё отлично, работаю над новым проектом 🚀", from: "out", time: "10:14" },
-      { id: 3, text: "Круто! Расскажешь потом?", from: "in", time: "10:15" },
-      { id: 4, text: "Конечно, вечером созвонимся", from: "out", time: "10:16" }
-    ]
-  },
-  {
-    id: "2",
-    name: "Команда проекта",
-    avatar: "К",
-    status: "3 участника",
-    messages: [
-      { id: 1, text: "Ребята, дедлайн через 2 дня", from: "in", time: "09:40" },
-      { id: 2, text: "Я почти закончил свою часть", from: "out", time: "09:45" },
-      { id: 3, text: "Отлично, жду PR", from: "in", time: "09:47" }
-    ]
-  },
-  {
-    id: "3",
-    name: "Максим",
-    avatar: "М",
-    status: "был(а) 25 мин. назад",
-    messages: [
-      { id: 1, text: "Кинь ссылку на репозиторий", from: "in", time: "Вчера" },
-      { id: 2, text: "https://github.com/example/messenger", from: "out", time: "Вчера" },
-      { id: 3, text: "Спасибо!", from: "in", time: "Вчера" }
-    ]
-  },
-  {
-    id: "4",
-    name: "Елена",
-    avatar: "Е",
-    status: "онлайн",
-    messages: [
-      { id: 1, text: "Не забывай про встречу в 15:00", from: "in", time: "08:30" },
-      { id: 2, text: "Помню, буду!", from: "out", time: "08:32" }
-    ]
-  },
-  {
-    id: "5",
-    name: "Алексей",
-    avatar: "А",
-    status: "был(а) недавно",
-    messages: [
-      { id: 1, text: "Посмотри новый дизайн", from: "in", time: "Пн" }
-    ]
-  }
-];
+const firebaseConfig = {
+  apiKey: "AIzaSyBJUNVhQyeYIQyO0nhodhxIdfVFDqdLCXc",
+  authDomain: "messenger-fc419.firebaseapp.com",
+  databaseURL: "https://messenger-fc419-default-rtdb.firebaseio.com",
+  projectId: "messenger-fc419",
+  storageBucket: "messenger-fc419.firebasestorage.app",
+  messagingSenderId: "671351381521",
+  appId: "1:671351381521:web:0c0d33ef8768ba16b29bb0",
+  measurementId: "G-V60B7MZR2X"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
 
 // ========== STATE ==========
-let chats = [];
+let currentUser = null;
 let currentChatId = null;
+let currentPartnerId = null;
+let users = {};
+let messagesListener = null;
 let searchQuery = "";
 
+const EMOJIS = ["😀","😂","😍","🥰","😎","🤔","👍","👎","❤️","🔥","🎉","✨","👋","🙏","💯","🚀","💬","👀","😊","🥳","😢","😡","🤝","💪","🌟","⭐","🍀","🍕","☕","🎵"];
+
 // ========== DOM ==========
-const chatsListEl = document.getElementById("chatsList");
+const loginScreen = document.getElementById("loginScreen");
+const appEl = document.getElementById("app");
+const displayNameInput = document.getElementById("displayNameInput");
+const loginBtn = document.getElementById("loginBtn");
+const usersListEl = document.getElementById("usersList");
 const messagesEl = document.getElementById("messages");
 const emptyStateEl = document.getElementById("emptyState");
-const chatHeaderEl = document.getElementById("chatHeader");
 const headerAvatarEl = document.getElementById("headerAvatar");
 const headerNameEl = document.getElementById("headerName");
 const headerStatusEl = document.getElementById("headerStatus");
@@ -76,215 +64,16 @@ const sendBtnEl = document.getElementById("sendBtn");
 const searchInputEl = document.getElementById("searchInput");
 const sidebarEl = document.getElementById("sidebar");
 const menuBtnEl = document.getElementById("menuBtn");
-const newChatBtnEl = document.getElementById("newChatBtn");
-const newChatModalEl = document.getElementById("newChatModal");
-const newChatNameEl = document.getElementById("newChatName");
-const cancelNewChatEl = document.getElementById("cancelNewChat");
-const createNewChatEl = document.getElementById("createNewChat");
+const logoutBtnEl = document.getElementById("logoutBtn");
+const myAvatarEl = document.getElementById("myAvatar");
+const myNameEl = document.getElementById("myName");
 const emojiBtnEl = document.getElementById("emojiBtn");
 const emojiPanelEl = document.getElementById("emojiPanel");
 const emojiGridEl = document.getElementById("emojiGrid");
 
-// ========== STORAGE ==========
-function loadChats() {
-  const saved = localStorage.getItem("grok-messenger-chats");
-  if (saved) {
-    try {
-      chats = JSON.parse(saved);
-      return;
-    } catch (e) {}
-  }
-  chats = JSON.parse(JSON.stringify(DEFAULT_CHATS));
-  saveChats();
-}
-
-function saveChats() {
-  localStorage.setItem("grok-messenger-chats", JSON.stringify(chats));
-}
-
 // ========== HELPERS ==========
-function getCurrentTime() {
-  const now = new Date();
-  return now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-}
-
-function getLastMessage(chat) {
-  if (!chat.messages.length) return { text: "Нет сообщений", time: "" };
-  return chat.messages[chat.messages.length - 1];
-}
-
 function getInitials(name) {
-  return name.trim().charAt(0).toUpperCase() || "?";
-}
-
-// ========== RENDER ==========
-function renderChats() {
-  const filtered = chats.filter(c =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  if (filtered.length === 0) {
-    chatsListEl.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.9rem;">Ничего не найдено</div>`;
-    return;
-  }
-
-  chatsListEl.innerHTML = filtered.map(chat => {
-    const last = getLastMessage(chat);
-    const isActive = chat.id === currentChatId;
-    const preview = last.from === "out" ? `Вы: ${last.text}` : last.text;
-
-    return `
-      <div class="chat-item ${isActive ? "active" : ""}" data-id="${chat.id}">
-        <div class="avatar">${chat.avatar || getInitials(chat.name)}</div>
-        <div class="info">
-          <div class="name-row">
-            <span class="name">${escapeHtml(chat.name)}</span>
-            <span class="time">${last.time}</span>
-          </div>
-          <div class="preview">${escapeHtml(preview)}</div>
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  // Click handlers
-  chatsListEl.querySelectorAll(".chat-item").forEach(el => {
-    el.addEventListener("click", () => selectChat(el.dataset.id));
-  });
-}
-
-function renderMessages(chatId) {
-  const chat = chats.find(c => c.id === chatId);
-  if (!chat) return;
-
-  emptyStateEl.style.display = "none";
-  messagesEl.innerHTML = "";
-
-  if (chat.messages.length === 0) {
-    messagesEl.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">👋</div>
-        <p>Напишите первое сообщение</p>
-      </div>
-    `;
-    return;
-  }
-
-  chat.messages.forEach(msg => {
-    const div = document.createElement("div");
-    div.className = `message ${msg.from}`;
-    div.innerHTML = `
-      <div class="bubble">${escapeHtml(msg.text)}</div>
-      <div class="meta">
-        <span>${msg.time}</span>
-        ${msg.from === "out" ? '<span class="status">✓✓</span>' : ""}
-      </div>
-    `;
-    messagesEl.appendChild(div);
-  });
-
-  // Scroll to bottom
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-
-function updateHeader(chat) {
-  if (!chat) {
-    headerAvatarEl.textContent = "?";
-    headerNameEl.textContent = "Выберите чат";
-    headerStatusEl.textContent = "—";
-    headerStatusEl.classList.remove("online");
-    composerEl.style.display = "none";
-    return;
-  }
-
-  headerAvatarEl.textContent = chat.avatar || getInitials(chat.name);
-  headerNameEl.textContent = chat.name;
-  headerStatusEl.textContent = chat.status;
-  headerStatusEl.classList.toggle("online", chat.status === "онлайн");
-  composerEl.style.display = "flex";
-}
-
-// ========== ACTIONS ==========
-function selectChat(id) {
-  currentChatId = id;
-  const chat = chats.find(c => c.id === id);
-
-  renderChats();
-  renderMessages(id);
-  updateHeader(chat);
-
-  // Close sidebar on mobile
-  sidebarEl.classList.remove("open");
-  messageInputEl.focus();
-}
-
-function sendMessage() {
-  const text = messageInputEl.value.trim();
-  if (!text || !currentChatId) return;
-
-  const chat = chats.find(c => c.id === currentChatId);
-  if (!chat) return;
-
-  const newMsg = {
-    id: Date.now(),
-    text,
-    from: "out",
-    time: getCurrentTime()
-  };
-
-  chat.messages.push(newMsg);
-  saveChats();
-
-  messageInputEl.value = "";
-  renderMessages(currentChatId);
-  renderChats();
-
-  // Simulate reply after delay (только для демо)
-  if (Math.random() > 0.4) {
-    setTimeout(() => {
-      const replies = [
-        "Понял 👍",
-        "Ок, сделаю",
-        "Интересно!",
-        "Согласен",
-        "Давай подробнее",
-        "Хорошо, спасибо",
-        "🔥",
-        "Отличная идея"
-      ];
-      const reply = {
-        id: Date.now() + 1,
-        text: replies[Math.floor(Math.random() * replies.length)],
-        from: "in",
-        time: getCurrentTime()
-      };
-      chat.messages.push(reply);
-      saveChats();
-      if (currentChatId === chat.id) {
-        renderMessages(currentChatId);
-      }
-      renderChats();
-    }, 1200 + Math.random() * 1800);
-  }
-}
-
-function createChat() {
-  const name = newChatNameEl.value.trim();
-  if (!name) return;
-
-  const newChat = {
-    id: Date.now().toString(),
-    name,
-    avatar: getInitials(name),
-    status: "онлайн",
-    messages: []
-  };
-
-  chats.unshift(newChat);
-  saveChats();
-  closeNewChatModal();
-  selectChat(newChat.id);
-  renderChats();
+  return (name || "?").trim().charAt(0).toUpperCase();
 }
 
 function escapeHtml(text) {
@@ -293,41 +82,256 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// ========== MODAL & EMOJI ==========
-function openNewChatModal() {
-  newChatModalEl.classList.add("open");
-  newChatNameEl.value = "";
-  newChatNameEl.focus();
+function formatTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  if (isToday) {
+    return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  }
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-function closeNewChatModal() {
-  newChatModalEl.classList.remove("open");
+function makeChatId(uid1, uid2) {
+  return [uid1, uid2].sort().join("_");
 }
 
-function toggleEmojiPanel() {
-  emojiPanelEl.classList.toggle("open");
+// ========== AUTH ==========
+async function login() {
+  const name = displayNameInput.value.trim();
+  if (!name || name.length < 2) {
+    displayNameInput.focus();
+    return;
+  }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = "Вход...";
+
+  try {
+    const cred = await signInAnonymously(auth);
+    await updateProfile(cred.user, { displayName: name });
+
+    // Сохраняем пользователя в базу
+    const userRef = ref(db, `users/${cred.user.uid}`);
+    await set(userRef, {
+      name,
+      online: true,
+      lastSeen: serverTimestamp(),
+      avatar: getInitials(name)
+    });
+
+    // Presence
+    const presenceRef = ref(db, `users/${cred.user.uid}/online`);
+    await set(presenceRef, true);
+    onDisconnect(presenceRef).set(false);
+    onDisconnect(ref(db, `users/${cred.user.uid}/lastSeen`)).set(serverTimestamp());
+
+  } catch (err) {
+    console.error(err);
+    alert("Ошибка входа: " + err.message);
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Войти";
+  }
 }
 
-function insertEmoji(emoji) {
-  const input = messageInputEl;
-  const start = input.selectionStart;
-  const end = input.selectionEnd;
-  input.value = input.value.slice(0, start) + emoji + input.value.slice(end);
-  input.focus();
-  input.selectionStart = input.selectionEnd = start + emoji.length;
-  emojiPanelEl.classList.remove("open");
+function logout() {
+  if (currentUser) {
+    set(ref(db, `users/${currentUser.uid}/online`), false);
+    set(ref(db, `users/${currentUser.uid}/lastSeen`), serverTimestamp());
+  }
+  signOut(auth);
 }
 
-function initEmojiPanel() {
+onAuthStateChanged(auth, async (user) => {
+  if (user && user.displayName) {
+    currentUser = user;
+    showApp();
+  } else {
+    currentUser = null;
+    showLogin();
+  }
+});
+
+function showLogin() {
+  loginScreen.style.display = "flex";
+  appEl.style.display = "none";
+  loginBtn.disabled = false;
+  loginBtn.textContent = "Войти";
+}
+
+function showApp() {
+  loginScreen.style.display = "none";
+  appEl.style.display = "flex";
+
+  myNameEl.textContent = currentUser.displayName;
+  myAvatarEl.textContent = getInitials(currentUser.displayName);
+
+  listenUsers();
+}
+
+// ========== USERS ==========
+function listenUsers() {
+  const usersRef = ref(db, "users");
+  onValue(usersRef, (snap) => {
+    users = snap.val() || {};
+    renderUsers();
+  });
+}
+
+function renderUsers() {
+  const list = Object.entries(users)
+    .filter(([uid]) => uid !== currentUser.uid)
+    .filter(([, u]) => {
+      if (!searchQuery) return true;
+      return (u.name || "").toLowerCase().includes(searchQuery.toLowerCase());
+    })
+    .sort((a, b) => {
+      // Онлайн сверху
+      if (a[1].online && !b[1].online) return -1;
+      if (!a[1].online && b[1].online) return 1;
+      return (a[1].name || "").localeCompare(b[1].name || "");
+    });
+
+  if (list.length === 0) {
+    usersListEl.innerHTML = `<div style="padding:24px 16px;text-align:center;color:var(--text-muted);font-size:0.9rem;">
+      ${searchQuery ? "Никого не найдено" : "Пока никого нет.<br>Открой в другой вкладке / устройстве"}
+    </div>`;
+    return;
+  }
+
+  usersListEl.innerHTML = list.map(([uid, u]) => {
+    const isActive = uid === currentPartnerId;
+    const statusText = u.online ? "онлайн" : "был(а) недавно";
+    return `
+      <div class="chat-item ${isActive ? "active" : ""}" data-uid="${uid}">
+        <div class="avatar">
+          ${u.avatar || getInitials(u.name)}
+          ${u.online ? '<span class="online-dot"></span>' : ""}
+        </div>
+        <div class="info">
+          <div class="name">${escapeHtml(u.name || "Без имени")}</div>
+          <div class="preview">${statusText}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  usersListEl.querySelectorAll(".chat-item").forEach(el => {
+    el.addEventListener("click", () => openChat(el.dataset.uid));
+  });
+}
+
+// ========== CHAT ==========
+function openChat(partnerId) {
+  if (!partnerId || partnerId === currentUser.uid) return;
+
+  // Отписываемся от предыдущего чата
+  if (messagesListener && currentChatId) {
+    off(ref(db, `chats/${currentChatId}/messages`));
+  }
+
+  currentPartnerId = partnerId;
+  currentChatId = makeChatId(currentUser.uid, partnerId);
+
+  const partner = users[partnerId] || {};
+  headerAvatarEl.textContent = partner.avatar || getInitials(partner.name);
+  headerNameEl.textContent = partner.name || "Пользователь";
+  headerStatusEl.textContent = partner.online ? "онлайн" : "был(а) недавно";
+  headerStatusEl.classList.toggle("online", !!partner.online);
+
+  composerEl.style.display = "flex";
+  emptyStateEl.style.display = "none";
+  sidebarEl.classList.remove("open");
+
+  renderUsers();
+  listenMessages();
+  messageInputEl.focus();
+}
+
+function listenMessages() {
+  messagesEl.innerHTML = "";
+  const messagesRef = query(
+    ref(db, `chats/${currentChatId}/messages`),
+    orderByChild("timestamp"),
+    limitToLast(100)
+  );
+
+  messagesListener = onValue(messagesRef, (snap) => {
+    const data = snap.val() || {};
+    const msgs = Object.entries(data)
+      .map(([id, m]) => ({ id, ...m }))
+      .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    renderMessages(msgs);
+  });
+}
+
+function renderMessages(msgs) {
+  if (msgs.length === 0) {
+    messagesEl.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">👋</div>
+        <p>Напишите первое сообщение</p>
+      </div>`;
+    return;
+  }
+
+  messagesEl.innerHTML = msgs.map(m => {
+    const isOut = m.from === currentUser.uid;
+    return `
+      <div class="message ${isOut ? "out" : "in"}">
+        ${!isOut ? `<div class="sender-name">${escapeHtml(m.name || "")}</div>` : ""}
+        <div class="bubble">${escapeHtml(m.text)}</div>
+        <div class="meta">
+          <span>${formatTime(m.timestamp)}</span>
+          ${isOut ? '<span>✓</span>' : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function sendMessage() {
+  const text = messageInputEl.value.trim();
+  if (!text || !currentChatId) return;
+
+  messageInputEl.value = "";
+
+  const msgRef = push(ref(db, `chats/${currentChatId}/messages`));
+  await set(msgRef, {
+    text,
+    from: currentUser.uid,
+    name: currentUser.displayName,
+    timestamp: Date.now()
+  });
+}
+
+// ========== EMOJI ==========
+function initEmoji() {
   emojiGridEl.innerHTML = EMOJIS.map(e => `<span data-emoji="${e}">${e}</span>`).join("");
   emojiGridEl.querySelectorAll("span").forEach(el => {
-    el.addEventListener("click", () => insertEmoji(el.dataset.emoji));
+    el.addEventListener("click", () => {
+      const emoji = el.dataset.emoji;
+      const input = messageInputEl;
+      const start = input.selectionStart;
+      input.value = input.value.slice(0, start) + emoji + input.value.slice(input.selectionEnd);
+      input.focus();
+      input.selectionStart = input.selectionEnd = start + emoji.length;
+      emojiPanelEl.classList.remove("open");
+    });
   });
 }
 
 // ========== EVENTS ==========
-sendBtnEl.addEventListener("click", sendMessage);
+loginBtn.addEventListener("click", login);
+displayNameInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") login();
+});
 
+sendBtnEl.addEventListener("click", sendMessage);
 messageInputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
@@ -337,24 +341,15 @@ messageInputEl.addEventListener("keydown", (e) => {
 
 searchInputEl.addEventListener("input", () => {
   searchQuery = searchInputEl.value;
-  renderChats();
+  renderUsers();
 });
 
-menuBtnEl.addEventListener("click", () => {
-  sidebarEl.classList.toggle("open");
-});
-
-newChatBtnEl.addEventListener("click", openNewChatModal);
-cancelNewChatEl.addEventListener("click", closeNewChatModal);
-createNewChatEl.addEventListener("click", createChat);
-
-newChatNameEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") createChat();
-});
+menuBtnEl.addEventListener("click", () => sidebarEl.classList.toggle("open"));
+logoutBtnEl.addEventListener("click", logout);
 
 emojiBtnEl.addEventListener("click", (e) => {
   e.stopPropagation();
-  toggleEmojiPanel();
+  emojiPanelEl.classList.toggle("open");
 });
 
 document.addEventListener("click", (e) => {
@@ -363,21 +358,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Close modal on backdrop click
-newChatModalEl.addEventListener("click", (e) => {
-  if (e.target === newChatModalEl) closeNewChatModal();
-});
-
 // ========== INIT ==========
-function init() {
-  loadChats();
-  initEmojiPanel();
-  renderChats();
-
-  // Auto-select first chat on desktop
-  if (window.innerWidth > 768 && chats.length) {
-    selectChat(chats[0].id);
-  }
-}
-
-init();
+initEmoji();
+displayNameInput.focus();
